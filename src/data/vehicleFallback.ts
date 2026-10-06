@@ -1,0 +1,66 @@
+import type { Vehicle } from "../types/vehicle";
+import truckImage from "../assets/VehicleTypes/Truck.png";
+import trailerImage from "../assets/VehicleTypes/Trailers.png";
+import tipperImage from "../assets/VehicleTypes/Tippers.png";
+
+const createdAt = "2025-01-01T00:00:00.000Z";
+
+export const fallbackVehicles: Vehicle[] = [
+  {
+    _id: "sample-tata-1613",
+    title: "Tata 1613 Truck",
+    brand: "Tata",
+    model: "1613",
+    year: 2022,
+    price: 1850000,
+    category: "Truck",
+    kilometers: 45000,
+    fuelType: "Diesel",
+    transmission: "Manual",
+    location: "Nashik",
+    description: "A dependable commercial truck in well-maintained condition.",
+    status: "Available",
+    isBestSeller: true,
+    images: [{ url: truckImage, publicId: "" }],
+    createdAt,
+    updatedAt: createdAt,
+  },
+  {
+    _id: "sample-commercial-trailer",
+    title: "Commercial Freight Trailer",
+    brand: "BharatBenz",
+    model: "5228TT",
+    year: 2021,
+    price: 2450000,
+    category: "Trailer",
+    kilometers: 62000,
+    fuelType: "Diesel",
+    transmission: "Manual",
+    location: "Pune",
+    description: "A practical freight trailer for long-haul transport.",
+    status: "Reserved",
+    isBestSeller: true,
+    images: [{ url: trailerImage, publicId: "" }],
+    createdAt,
+    updatedAt: createdAt,
+  },
+  {
+    _id: "sample-tipper",
+    title: "Heavy Duty Tipper",
+    brand: "Ashok Leyland",
+    model: "1616",
+    year: 2020,
+    price: 1975000,
+    category: "Tipper",
+    kilometers: 78000,
+    fuelType: "Diesel",
+    transmission: "Manual",
+    location: "Mumbai",
+    description: "A rugged tipper suited to demanding commercial work.",
+    status: "Sold",
+    isBestSeller: true,
+    images: [{ url: tipperImage, publicId: "" }],
+    createdAt,
+    updatedAt: createdAt,
+  },
+];
