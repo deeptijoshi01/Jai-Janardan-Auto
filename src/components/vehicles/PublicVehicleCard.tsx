@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   Fuel,
   Gauge,
   MapPin,
@@ -76,17 +78,36 @@ const PublicVehicleCard = ({
   showBestSellerBadge = false,
   compact = false,
 }: PublicVehicleCardProps) => {
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [cardImageIndex, setCardImageIndex] = useState(0);
+  const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
+  const swipeStartX = useRef<number | null>(null);
   const placeholder = categoryImage(vehicle.category);
-  const imageUrl = vehicle.images?.[0]?.url || placeholder;
-  const hasImage = Boolean(vehicle.images?.[0]?.url);
+  const galleryImages = vehicle.images?.filter((image) => image.url) ?? [];
+  const imageUrls =
+    galleryImages.length > 0
+      ? galleryImages.map((image) => image.url)
+      : [placeholder];
+  const imageUrl = imageUrls[cardImageIndex] ?? imageUrls[0];
+  const hasMultipleImages = imageUrls.length > 1;
 
   useEffect(() => {
-    if (!previewImage) return;
+    if (activeImageIndex === null) return;
 
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setPreviewImage(null);
+      if (event.key === "Escape") {
+        setActiveImageIndex(null);
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        setActiveImageIndex((index) =>
+          index === null ? null : (index - 1 + imageUrls.length) % imageUrls.length
+        );
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setActiveImageIndex((index) =>
+          index === null ? null : (index + 1) % imageUrls.length
+        );
+      }
     };
 
     document.body.style.overflow = "hidden";
@@ -95,7 +116,26 @@ const PublicVehicleCard = ({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [previewImage]);
+  }, [activeImageIndex, imageUrls.length]);
+
+  const showPreviousImage = () =>
+    setActiveImageIndex((index) =>
+      index === null ? null : (index - 1 + imageUrls.length) % imageUrls.length
+    );
+
+  const showNextImage = () =>
+    setActiveImageIndex((index) =>
+      index === null ? null : (index + 1) % imageUrls.length
+    );
+
+  const handleGallerySwipeEnd = (clientX: number) => {
+    if (swipeStartX.current === null) return;
+    const distance = clientX - swipeStartX.current;
+    swipeStartX.current = null;
+    if (Math.abs(distance) < 45) return;
+    if (distance > 0) showPreviousImage();
+    else showNextImage();
+  };
 
   const statusKey: VehicleStatus =
     vehicle.status in statusDots ? vehicle.status : "Available";
@@ -117,42 +157,60 @@ const PublicVehicleCard = ({
     >
       {/* ---------- Media ---------- */}
       <div
-        className={`relative overflow-hidden ${
-          compact
-            ? "aspect-[16/9] bg-[#f1f0ec]"
-            : "aspect-[3/2] bg-gradient-to-b from-[#f7f4ec] to-[#efe9db]"
-        }`}
+        className="relative aspect-[16/9] overflow-hidden bg-[#f1f0ec]"
       >
         <button
           type="button"
-          onClick={() => setPreviewImage(imageUrl)}
-          aria-label={`View full image of ${vehicle.title}`}
-          className="absolute inset-0 flex h-full w-full items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c9a24b]"
+          onClick={() => setActiveImageIndex(cardImageIndex)}
+          aria-label={`View vehicle image gallery for ${vehicle.title}`}
+          className="absolute inset-0 flex h-full w-full items-center justify-center p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#c9a24b] sm:p-3"
         >
           <img
             src={imageUrl}
-            alt={vehicle.title}
+            alt={`${vehicle.title} image ${cardImageIndex + 1}`}
             loading="lazy"
-            className={`h-full w-full ${
-              compact
-                ? hasImage
-                  ? "object-cover"
-                  : "object-contain p-5"
-                : hasImage
-                  ? "object-contain p-2 sm:p-3"
-                  : "object-contain p-6"
+            className={`h-full w-full object-contain ${
+              galleryImages.length > 0 ? "" : "p-5"
             }`}
             onError={(event) => {
               if (!event.currentTarget.dataset.fallbackApplied) {
                 event.currentTarget.dataset.fallbackApplied = "true";
                 event.currentTarget.src = placeholder;
-                event.currentTarget.className = compact
-                  ? "h-full w-full object-contain p-5"
-                  : "h-full w-full object-contain p-6";
+                event.currentTarget.className = "h-full w-full object-contain p-5";
               }
             }}
           />
         </button>
+
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous vehicle image"
+              onClick={(event) => {
+                event.stopPropagation();
+                setCardImageIndex((index) => (index - 1 + imageUrls.length) % imageUrls.length);
+              }}
+              className="absolute left-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-[#fffefa]/90 text-[#25354b] shadow-sm transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c9a24b] sm:left-3 sm:h-9 sm:w-9"
+            >
+              <ChevronLeft size={18} aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Next vehicle image"
+              onClick={(event) => {
+                event.stopPropagation();
+                setCardImageIndex((index) => (index + 1) % imageUrls.length);
+              }}
+              className="absolute right-2 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-[#fffefa]/90 text-[#25354b] shadow-sm transition hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#c9a24b] sm:right-3 sm:h-9 sm:w-9"
+            >
+              <ChevronRight size={18} aria-hidden="true" />
+            </button>
+            <span className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-full bg-[#0b1a33]/75 px-2.5 py-1 text-[10px] font-medium tabular-nums text-white backdrop-blur-sm sm:bottom-3 sm:right-3">
+              {cardImageIndex + 1} / {imageUrls.length}
+            </span>
+          </>
+        )}
 
         {showBestSellerBadge && (
           <span
@@ -185,29 +243,107 @@ const PublicVehicleCard = ({
         </span>
       </div>
 
-      {previewImage &&
+      {activeImageIndex !== null &&
         createPortal(
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={`${vehicle.title} image preview`}
-            onClick={() => setPreviewImage(null)}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 p-3 sm:p-6"
+            aria-label={`${vehicle.title} image gallery`}
+            onClick={() => setActiveImageIndex(null)}
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#080d16]/95 p-3 backdrop-blur-sm sm:p-6"
           >
             <button
               type="button"
-              onClick={() => setPreviewImage(null)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setActiveImageIndex(null);
+              }}
               aria-label="Close image preview"
-              className="absolute right-3 top-3 z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:right-5 sm:top-5"
+              className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:right-6 sm:top-5"
             >
               <X size={26} />
             </button>
-            <img
-              src={previewImage}
-              alt={vehicle.title}
+            <span className="absolute right-16 top-5 z-20 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-medium tabular-nums text-white sm:right-20">
+              {activeImageIndex + 1} / {imageUrls.length}
+            </span>
+            <div
+              className="relative flex min-h-0 w-full max-w-7xl flex-1 items-center justify-center"
               onClick={(event) => event.stopPropagation()}
-              className="max-h-[90vh] max-w-[95vw] object-contain"
+              onPointerDown={(event) => {
+                swipeStartX.current = event.clientX;
+              }}
+              onPointerUp={(event) => handleGallerySwipeEnd(event.clientX)}
+              onPointerCancel={() => {
+                swipeStartX.current = null;
+              }}
+            >
+              {hasMultipleImages && (
+                <button
+                  type="button"
+                  aria-label="Previous vehicle image"
+                  onClick={showPreviousImage}
+                  className="absolute left-0 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:-left-4 sm:h-12 sm:w-12"
+                >
+                  <ChevronLeft size={26} aria-hidden="true" />
+                </button>
+              )}
+            <img
+              src={imageUrls[activeImageIndex]}
+              alt={vehicle.title}
+              onError={(event) => {
+                if (!event.currentTarget.dataset.fallbackApplied) {
+                  event.currentTarget.dataset.fallbackApplied = "true";
+                  event.currentTarget.src = placeholder;
+                }
+              }}
+              className="max-h-full max-w-[calc(100%-5.5rem)] select-none object-contain sm:max-w-[calc(100%-8rem)]"
+              draggable={false}
             />
+              {hasMultipleImages && (
+                <button
+                  type="button"
+                  aria-label="Next vehicle image"
+                  onClick={showNextImage}
+                  className="absolute right-0 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white sm:-right-4 sm:h-12 sm:w-12"
+                >
+                  <ChevronRight size={26} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            {hasMultipleImages && (
+              <div
+                className="mt-3 flex max-w-full gap-2 overflow-x-auto px-1 pb-1 sm:mt-4 sm:gap-3"
+                onClick={(event) => event.stopPropagation()}
+                aria-label="Vehicle image thumbnails"
+              >
+                {imageUrls.map((url, index) => (
+                  <button
+                    key={`${url}-${index}`}
+                    type="button"
+                    aria-label={`Show image ${index + 1}`}
+                    aria-current={activeImageIndex === index ? "true" : undefined}
+                    onClick={() => setActiveImageIndex(index)}
+                    className={`h-14 w-20 shrink-0 overflow-hidden rounded-lg border bg-[#171b22] transition sm:h-16 sm:w-24 ${
+                      activeImageIndex === index
+                        ? "border-[#d6b66b] ring-2 ring-[#d6b66b]/50"
+                        : "border-white/20 opacity-70 hover:opacity-100"
+                    }`}
+                  >
+                    <img
+                      src={url}
+                      alt=""
+                      className="h-full w-full object-contain p-1"
+                      onError={(event) => {
+                        if (!event.currentTarget.dataset.fallbackApplied) {
+                          event.currentTarget.dataset.fallbackApplied = "true";
+                          event.currentTarget.src = placeholder;
+                        }
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>,
           document.body
         )}

@@ -1,5 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, FormEvent, ReactNode } from "react";
+import type {
+  ChangeEvent,
+  FormEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -16,6 +21,8 @@ import {
   Tag,
   FileText,
   Plus,
+  RotateCcw,
+  ShieldCheck,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { fetchBrands, fetchCategories } from "../services/categoryBrandApi";
@@ -29,6 +36,27 @@ import {
 interface ImagePreview {
   file: File;
   preview: string;
+  originalFile: File;
+  originalPreview: string;
+  hideNumberPlate: boolean;
+  selection: SelectionRect | null;
+  blurApplied: boolean;
+}
+
+interface SelectionRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface SelectionGesture {
+  imageIndex: number;
+  action: "draw" | "move" | "resize";
+  startX: number;
+  startY: number;
+  initial: SelectionRect | null;
+  edges: { left: boolean; right: boolean; top: boolean; bottom: boolean };
 }
 
 interface UploadedImage {
@@ -74,6 +102,82 @@ const card =
 const fieldBase =
   "w-full rounded-xl border border-[#e6e1d6] bg-[#fdfcf9] text-base text-[#14110a] outline-none transition placeholder:text-[#a39d90] focus:border-[#c9a050] focus:bg-white focus:ring-4 focus:ring-[#c9a050]/15 sm:text-sm";
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
+const selectionIsValid = (
+  selection: SelectionRect | null,
+  imageWidth: number,
+  imageHeight: number
+) =>
+  Boolean(
+    selection &&
+      selection.width * imageWidth >= 16 &&
+      selection.height * imageHeight >= 16
+  );
+
+const createBlurredImage = async (
+  file: File,
+  selection: SelectionRect
+): Promise<File> => {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  const blurredCanvas = document.createElement("canvas");
+  canvas.width = blurredCanvas.width = bitmap.width;
+  canvas.height = blurredCanvas.height = bitmap.height;
+
+  const context = canvas.getContext("2d");
+  const blurredContext = blurredCanvas.getContext("2d");
+  if (!context || !blurredContext) {
+    bitmap.close();
+    throw new Error("Your browser could not prepare this image for blurring.");
+  }
+
+  context.drawImage(bitmap, 0, 0);
+  const blurRadius = clamp(Math.round(Math.min(bitmap.width, bitmap.height) * 0.018), 12, 36);
+  blurredContext.filter = `blur(${blurRadius}px)`;
+  blurredContext.drawImage(bitmap, 0, 0);
+
+  context.save();
+  context.beginPath();
+  context.rect(
+    selection.x * bitmap.width,
+    selection.y * bitmap.height,
+    selection.width * bitmap.width,
+    selection.height * bitmap.height
+  );
+  context.clip();
+  context.drawImage(blurredCanvas, 0, 0);
+  context.restore();
+  bitmap.close();
+
+  const mimeType = file.type === "image/png" || file.type === "image/webp"
+    ? file.type
+    : "image/jpeg";
+  const quality = mimeType === "image/jpeg" || mimeType === "image/webp" ? 0.98 : undefined;
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => {
+        if (result) resolve(result);
+        else reject(new Error("The edited image could not be created."));
+      },
+      mimeType,
+      quality
+    );
+  });
+
+  if (blob.size > 10 * 1024 * 1024) {
+    throw new Error("The blurred image exceeds the 10 MB upload limit. Try a smaller image.");
+  }
+
+  const extension = mimeType === "image/png" ? ".png" : mimeType === "image/webp" ? ".webp" : ".jpg";
+  const baseName = file.name.replace(/\.[^.]+$/, "");
+  return new File([blob], `${baseName}${extension}`, {
+    type: mimeType,
+    lastModified: Date.now(),
+  });
+};
+
 /* ------------------------------------------------------------------ */
 /* Page                                                                */
 /* ------------------------------------------------------------------ */
@@ -106,7 +210,12 @@ const AddVehicle = () => {
   const [brandNotice, setBrandNotice] = useState("");
 
   const [images, setImages] = useState<ImagePreview[]>([]);
+  const imagesRef = useRef(images);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [editingImageIndex, setEditingImageIndex] = useState<number | null>(null);
+  const [editorImageSize, setEditorImageSize] = useState({ width: 0, height: 0 });
+  const [editorDisplaySize, setEditorDisplaySize] = useState({ width: 0, height: 0 });
+  const [isApplyingBlur, setIsApplyingBlur] = useState(false);
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -115,9 +224,16 @@ const AddVehicle = () => {
   const [success, setSuccess] = useState("");
 
   const alertRef = useRef<HTMLDivElement>(null);
+  const editorViewportRef = useRef<HTMLDivElement>(null);
+  const editorImageRef = useRef<HTMLImageElement>(null);
+  const selectionGesture = useRef<SelectionGesture | null>(null);
   const brandRequestSequence = useRef(0);
   const locationId = useId();
   const descriptionId = useId();
+
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
   useEffect(() => {
     let isMounted = true;
@@ -140,6 +256,78 @@ const AddVehicle = () => {
       isMounted = false;
     };
   }, []);
+
+  useEffect(
+    () => () => {
+      imagesRef.current.forEach((image) => {
+        URL.revokeObjectURL(image.preview);
+        if (image.originalPreview !== image.preview) {
+          URL.revokeObjectURL(image.originalPreview);
+        }
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (editingImageIndex === null) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isApplyingBlur) {
+        setEditingImageIndex(null);
+        selectionGesture.current = null;
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [editingImageIndex, isApplyingBlur]);
+
+  useEffect(() => {
+    if (editingImageIndex === null) return;
+
+    const viewport = editorViewportRef.current;
+    const image = editorImageRef.current;
+    if (!viewport || !image) return;
+
+    const fitImage = () => {
+      const naturalWidth = image.naturalWidth;
+      const naturalHeight = image.naturalHeight;
+      const availableWidth = viewport.clientWidth;
+      const availableHeight = viewport.clientHeight;
+      if (!naturalWidth || !naturalHeight || !availableWidth || !availableHeight) return;
+
+      const scale = Math.min(
+        availableWidth / naturalWidth,
+        availableHeight / naturalHeight
+      );
+      const nextSize = {
+        width: naturalWidth * scale,
+        height: naturalHeight * scale,
+      };
+
+      setEditorDisplaySize((current) =>
+        current.width === nextSize.width && current.height === nextSize.height
+          ? current
+          : nextSize
+      );
+    };
+
+    fitImage();
+    const observer = new ResizeObserver(fitImage);
+    observer.observe(viewport);
+    window.addEventListener("resize", fitImage);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", fitImage);
+    };
+  }, [editingImageIndex, editorImageSize.width, editorImageSize.height]);
 
   const handleCategoryChange = (value: string) => {
     const requestSequence = ++brandRequestSequence.current;
@@ -280,7 +468,15 @@ const AddVehicle = () => {
     const newImages = selectedFiles.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
+      originalFile: file,
+      originalPreview: "",
+      hideNumberPlate: false,
+      selection: null,
+      blurApplied: false,
     }));
+    newImages.forEach((image) => {
+      image.originalPreview = image.preview;
+    });
 
     setImages((previous) => [...previous, ...newImages]);
 
@@ -298,14 +494,266 @@ const AddVehicle = () => {
 
       if (imageToRemove) {
         URL.revokeObjectURL(imageToRemove.preview);
+        if (imageToRemove.originalPreview !== imageToRemove.preview) {
+          URL.revokeObjectURL(imageToRemove.originalPreview);
+        }
       }
 
       return previous.filter((_, imageIndex) => imageIndex !== index);
     });
+    setEditingImageIndex(null);
+    selectionGesture.current = null;
 
     // Uploaded images are cleared because they no longer
     // match the currently selected files.
     setUploadedImages([]);
+  };
+
+  const toggleNumberPlatePrivacy = (index: number, hideNumberPlate: boolean) => {
+    const image = images[index];
+    if (!image) return;
+
+    if (hideNumberPlate) {
+      if (!image.hideNumberPlate) {
+        setImages((previous) =>
+          previous.map((item, imageIndex) =>
+            imageIndex === index
+              ? {
+                  ...item,
+                  file: item.originalFile,
+                  preview: item.originalPreview,
+                  hideNumberPlate: true,
+                  selection: null,
+                  blurApplied: false,
+                }
+              : item
+          )
+        );
+        if (image.preview !== image.originalPreview) {
+          URL.revokeObjectURL(image.preview);
+        }
+        setUploadedImages([]);
+      }
+      setEditingImageIndex(index);
+      setEditorImageSize({ width: 0, height: 0 });
+      selectionGesture.current = null;
+      return;
+    }
+
+    if (image.preview !== image.originalPreview) {
+      URL.revokeObjectURL(image.preview);
+    }
+    setImages((previous) =>
+      previous.map((item, imageIndex) =>
+        imageIndex === index
+          ? {
+              ...item,
+              file: item.originalFile,
+              preview: item.originalPreview,
+              hideNumberPlate,
+              selection: null,
+              blurApplied: false,
+            }
+          : item
+      )
+    );
+    setUploadedImages([]);
+    setEditingImageIndex(null);
+    selectionGesture.current = null;
+  };
+
+  const resetNumberPlateBlur = (index: number) => {
+    const image = images[index];
+    if (!image) return;
+
+    if (image.preview !== image.originalPreview) {
+      URL.revokeObjectURL(image.preview);
+    }
+    setImages((previous) =>
+      previous.map((item, imageIndex) =>
+        imageIndex === index
+          ? {
+              ...item,
+              file: item.originalFile,
+              preview: item.originalPreview,
+              selection: null,
+              blurApplied: false,
+            }
+          : item
+      )
+    );
+    setUploadedImages([]);
+    setEditorImageSize({ width: 0, height: 0 });
+    selectionGesture.current = null;
+  };
+
+  const resetNumberPlateSelection = (index: number) => {
+    setImages((previous) =>
+      previous.map((item, imageIndex) =>
+        imageIndex === index ? { ...item, selection: null } : item
+      )
+    );
+    selectionGesture.current = null;
+  };
+
+  const handleEditorPointerDown = (
+    index: number,
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    const imageElement = editorImageRef.current;
+    const image = images[index];
+    if (!imageElement || !image) return;
+
+    const bounds = imageElement.getBoundingClientRect();
+    const x = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
+    const y = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
+    const target = event.target;
+    const resizeHandle =
+      target instanceof Element ? target.closest<HTMLElement>("[data-resize]") : null;
+    const edges = resizeHandle?.dataset.resize ?? "";
+    const current = image.selection;
+    const insideSelection =
+      current &&
+      x >= current.x &&
+      x <= current.x + current.width &&
+      y >= current.y &&
+      y <= current.y + current.height;
+
+    const action: SelectionGesture["action"] = resizeHandle
+      ? "resize"
+      : insideSelection
+        ? "move"
+        : "draw";
+
+    selectionGesture.current = {
+      imageIndex: index,
+      action,
+      startX: x,
+      startY: y,
+      initial: action === "draw" ? null : current,
+      edges: {
+        left: edges.includes("w"),
+        right: edges.includes("e"),
+        top: edges.includes("n"),
+        bottom: edges.includes("s"),
+      },
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+
+    if (action === "draw") {
+      setImages((previous) =>
+        previous.map((item, imageIndex) =>
+          imageIndex === index
+            ? { ...item, selection: { x, y, width: 0, height: 0 } }
+            : item
+        )
+      );
+    }
+  };
+
+  const handleEditorPointerMove = (
+    index: number,
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    const gesture = selectionGesture.current;
+    const imageElement = editorImageRef.current;
+    if (!gesture || gesture.imageIndex !== index || !imageElement) return;
+
+    const bounds = imageElement.getBoundingClientRect();
+    const x = clamp((event.clientX - bounds.left) / bounds.width, 0, 1);
+    const y = clamp((event.clientY - bounds.top) / bounds.height, 0, 1);
+    let selection: SelectionRect;
+
+    if (gesture.action === "draw") {
+      selection = {
+        x: Math.min(gesture.startX, x),
+        y: Math.min(gesture.startY, y),
+        width: Math.abs(x - gesture.startX),
+        height: Math.abs(y - gesture.startY),
+      };
+    } else if (gesture.initial && gesture.action === "move") {
+      selection = {
+        ...gesture.initial,
+        x: clamp(gesture.initial.x + x - gesture.startX, 0, 1 - gesture.initial.width),
+        y: clamp(gesture.initial.y + y - gesture.startY, 0, 1 - gesture.initial.height),
+      };
+    } else if (gesture.initial) {
+      const initial = gesture.initial;
+      const minWidth = Math.min(1, 16 / imageElement.naturalWidth);
+      const minHeight = Math.min(1, 16 / imageElement.naturalHeight);
+      let left = initial.x;
+      let right = initial.x + initial.width;
+      let top = initial.y;
+      let bottom = initial.y + initial.height;
+
+      if (gesture.edges.left) left = clamp(x, 0, right - minWidth);
+      if (gesture.edges.right) right = clamp(x, left + minWidth, 1);
+      if (gesture.edges.top) top = clamp(y, 0, bottom - minHeight);
+      if (gesture.edges.bottom) bottom = clamp(y, top + minHeight, 1);
+      selection = { x: left, y: top, width: right - left, height: bottom - top };
+    } else {
+      return;
+    }
+
+    setImages((previous) =>
+      previous.map((item, imageIndex) =>
+        imageIndex === index ? { ...item, selection } : item
+      )
+    );
+  };
+
+  const finishEditorPointer = (index: number) => {
+    if (selectionGesture.current?.imageIndex === index) {
+      selectionGesture.current = null;
+    }
+  };
+
+  const applyNumberPlateBlur = async (index: number) => {
+    const image = images[index];
+    const imageElement = editorImageRef.current;
+    if (
+      !image ||
+      !image.selection ||
+      !imageElement ||
+      !selectionIsValid(
+        image.selection,
+        imageElement.naturalWidth,
+        imageElement.naturalHeight
+      )
+    ) {
+      setError("Select a larger number plate area before applying blur.");
+      return;
+    }
+
+    setIsApplyingBlur(true);
+    setError("");
+    try {
+      const processedFile = await createBlurredImage(image.originalFile, image.selection);
+      const processedPreview = URL.createObjectURL(processedFile);
+      if (image.preview !== image.originalPreview) {
+        URL.revokeObjectURL(image.preview);
+      }
+      setImages((previous) =>
+        previous.map((item, imageIndex) =>
+          imageIndex === index
+            ? { ...item, file: processedFile, preview: processedPreview, blurApplied: true }
+            : item
+        )
+      );
+      setUploadedImages([]);
+      setEditingImageIndex(null);
+      selectionGesture.current = null;
+    } catch (blurError) {
+      console.error("Number plate blur error:", blurError);
+      setError(
+        blurError instanceof Error
+          ? blurError.message
+          : "Unable to blur the selected number plate area."
+      );
+    } finally {
+      setIsApplyingBlur(false);
+    }
   };
 
   // =====================================================
@@ -417,6 +865,13 @@ const AddVehicle = () => {
       return;
     }
 
+    if (images.some((image) => image.hideNumberPlate && !image.blurApplied)) {
+      setError(
+        "Apply the number plate blur to every image marked Yes before adding the vehicle."
+      );
+      return;
+    }
+
     setIsSaving(true);
 
     try {
@@ -489,6 +944,24 @@ const AddVehicle = () => {
       setIsSaving(false);
     }
   };
+
+  const activeEditorImage =
+    editingImageIndex === null ? null : images[editingImageIndex] ?? null;
+  const activeEditorHasValidSelection = selectionIsValid(
+    activeEditorImage?.selection ?? null,
+    editorImageSize.width,
+    editorImageSize.height
+  );
+  const resizeHandles = [
+    ["nw", "left-0 top-0 -translate-x-1/2 -translate-y-1/2"],
+    ["n", "left-1/2 top-0 -translate-x-1/2 -translate-y-1/2"],
+    ["ne", "right-0 top-0 translate-x-1/2 -translate-y-1/2"],
+    ["e", "right-0 top-1/2 translate-x-1/2 -translate-y-1/2"],
+    ["se", "right-0 bottom-0 translate-x-1/2 translate-y-1/2"],
+    ["s", "left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2"],
+    ["sw", "left-0 bottom-0 -translate-x-1/2 translate-y-1/2"],
+    ["w", "left-0 top-1/2 -translate-x-1/2 -translate-y-1/2"],
+  ];
 
   return (
     <div className="mx-auto max-w-5xl pb-4">
@@ -593,39 +1066,102 @@ const AddVehicle = () => {
             )}
 
             {/* Previews */}
-            {images.map((image, index) => (
-              <div
-                key={`${image.file.name}-${index}`}
-                className="group relative aspect-[4/3] overflow-hidden rounded-2xl bg-[#f1ede2] ring-1 ring-[#efeae0]"
-              >
-                <img
-                  src={image.preview}
-                  alt={`Vehicle ${index + 1}`}
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" />
-
-                {index === 0 && (
-                  <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#14110a] shadow-sm">
-                    Main image
-                  </span>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-                  aria-label={`Remove image ${index + 1}`}
+            {images.map((image, index) => {
+              return (
+                <div
+                  key={`${image.originalFile.name}-${index}`}
+                  className="min-w-0 overflow-hidden rounded-2xl border border-[#efeae0] bg-white shadow-sm"
                 >
-                  <X size={16} />
-                </button>
+                  <div className="group relative aspect-[4/3] overflow-hidden bg-[#f1ede2]">
+                    <img
+                      src={image.preview}
+                      alt={`Vehicle ${index + 1}`}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                    />
 
-                <p className="absolute inset-x-0 bottom-0 truncate p-2.5 text-xs font-medium text-white">
-                  {image.file.name}
-                </p>
-              </div>
-            ))}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-black/10" />
+
+                    {index === 0 && (
+                      <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#14110a] shadow-sm">
+                        Main image
+                      </span>
+                    )}
+
+                    {image.blurApplied && (
+                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-emerald-700/90 px-2 py-1 text-[10px] font-semibold text-white">
+                        <ShieldCheck size={12} />
+                        Plate hidden
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      disabled={isApplyingBlur}
+                      className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition hover:bg-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label={`Remove image ${index + 1}`}
+                    >
+                      <X size={16} />
+                    </button>
+
+                    <p className="absolute inset-x-0 bottom-0 truncate p-2.5 text-xs font-medium text-white">
+                      {image.originalFile.name}
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-[#4d493f]">
+                        Hide Number Plate?
+                      </span>
+                      <div
+                        role="group"
+                        aria-label={`Hide number plate in image ${index + 1}`}
+                        className="inline-flex rounded-lg border border-[#e6e1d6] bg-[#f8f6f1] p-0.5"
+                      >
+                        {[false, true].map((hide) => (
+                          <button
+                            key={String(hide)}
+                            type="button"
+                            aria-pressed={image.hideNumberPlate === hide}
+                            disabled={isSaving || isUploading || isApplyingBlur}
+                            onClick={() => toggleNumberPlatePrivacy(index, hide)}
+                            className={`min-w-12 rounded-md px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                              image.hideNumberPlate === hide
+                                ? "bg-white text-[#14110a] shadow-sm ring-1 ring-[#e6e1d6]"
+                                : "text-[#797368] hover:text-[#14110a]"
+                            }`}
+                          >
+                            {hide ? "Yes" : "No"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {image.hideNumberPlate && (
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          disabled={isSaving || isUploading || isApplyingBlur}
+                          onClick={() => {
+                            setEditingImageIndex(index);
+                            setEditorImageSize({ width: 0, height: 0 });
+                          }}
+                          className="inline-flex h-9 items-center justify-center rounded-lg border border-[#e6e1d6] bg-white px-3 text-xs font-semibold text-[#4d493f] transition hover:border-[#c9a050] hover:bg-[#fdfaf2] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {image.blurApplied ? "Adjust Number Plate Blur" : "Select Number Plate"}
+                        </button>
+                        {image.blurApplied && (
+                          <p className="text-[11px] font-medium text-emerald-700">
+                            The blurred image will be uploaded.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {images.length === 0 && (
@@ -928,6 +1464,161 @@ const AddVehicle = () => {
           </button>
         </div>
       </form>
+      {editingImageIndex !== null && activeEditorImage && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="number-plate-editor-title"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[#080d16]/90 p-2 backdrop-blur-sm sm:p-5"
+        >
+          <div className="flex h-[calc(100dvh-1rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#f8f7f3] shadow-2xl sm:h-[calc(100dvh-2.5rem)] sm:rounded-3xl">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#e9e4d9] px-3 py-3 sm:px-6 sm:py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingImageIndex(null);
+                  selectionGesture.current = null;
+                }}
+                disabled={isApplyingBlur}
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl px-2.5 text-sm font-semibold text-[#4d493f] transition hover:bg-[#efede6] disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
+              >
+                <X size={17} />
+                <span className="hidden sm:inline">Close</span>
+                <span className="sm:hidden">Cancel</span>
+              </button>
+              <div className="min-w-0 text-center">
+                <h2
+                  id="number-plate-editor-title"
+                  className="jj-serif truncate text-lg text-[#14110a] sm:text-2xl"
+                >
+                  Number Plate Privacy
+                </h2>
+                <p className="mt-0.5 hidden text-xs text-[#797368] sm:block">
+                  Image {editingImageIndex + 1} of {images.length}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => resetNumberPlateBlur(editingImageIndex)}
+                disabled={isApplyingBlur || isSaving || isUploading}
+                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-[#75602f] transition hover:bg-[#efede6] disabled:cursor-not-allowed disabled:opacity-60 sm:px-3 sm:text-sm"
+              >
+                <RotateCcw size={15} />
+                Reset
+              </button>
+            </header>
+
+            <main className="flex min-h-0 flex-1 flex-col px-2 py-2 sm:px-5 sm:py-4">
+              <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-xl bg-[#171b22] sm:rounded-2xl">
+                <div
+                  ref={editorViewportRef}
+                  className="absolute inset-2 flex items-center justify-center sm:inset-4"
+                >
+                  <div
+                    className="relative shrink-0 touch-none select-none"
+                    style={{
+                      width: editorDisplaySize.width || undefined,
+                      height: editorDisplaySize.height || undefined,
+                    }}
+                    onPointerDown={(event) =>
+                      handleEditorPointerDown(editingImageIndex, event)
+                    }
+                    onPointerMove={(event) =>
+                      handleEditorPointerMove(editingImageIndex, event)
+                    }
+                    onPointerUp={() => finishEditorPointer(editingImageIndex)}
+                    onPointerCancel={() => finishEditorPointer(editingImageIndex)}
+                  >
+                    <img
+                      ref={editorImageRef}
+                      src={activeEditorImage.originalPreview}
+                      alt={`Select the number plate area in image ${editingImageIndex + 1}`}
+                      draggable={false}
+                      onLoad={(event) => {
+                        setEditorImageSize({
+                          width: event.currentTarget.naturalWidth,
+                          height: event.currentTarget.naturalHeight,
+                        });
+                      }}
+                      className="block h-full w-full max-h-full max-w-full touch-none select-none object-contain"
+                    />
+                    {activeEditorImage.selection && (
+                      <div
+                        className="pointer-events-none absolute border-2 border-[#f0c96b] bg-[#e0b866]/20 shadow-[0_0_0_9999px_rgba(5,8,13,0.42)]"
+                        style={{
+                          left: `${activeEditorImage.selection.x * 100}%`,
+                          top: `${activeEditorImage.selection.y * 100}%`,
+                          width: `${activeEditorImage.selection.width * 100}%`,
+                          height: `${activeEditorImage.selection.height * 100}%`,
+                        }}
+                      >
+                        {resizeHandles.map(([edge, position]) => (
+                          <span
+                            key={edge}
+                            data-resize={edge}
+                            className={`pointer-events-auto absolute h-5 w-5 rounded-full border-2 border-[#75602f] bg-[#fffdf7] shadow-md sm:h-4 sm:w-4 ${position}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 flex-col gap-3 px-1 pt-3 sm:flex-row sm:items-center sm:justify-between sm:px-1 sm:pt-4">
+                <p className="text-center text-xs leading-5 text-[#70695d] sm:text-left">
+                  Drag to select the plate. Move the box or use its handles to adjust it.
+                  {activeEditorImage.selection && !activeEditorHasValidSelection && (
+                    <span className="block text-[#8a6252]">
+                      Select an area at least 16 × 16 image pixels.
+                    </span>
+                  )}
+                </p>
+                <div className="grid grid-cols-3 gap-2 sm:flex sm:shrink-0 sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => resetNumberPlateSelection(editingImageIndex)}
+                    disabled={!activeEditorImage.selection || isApplyingBlur}
+                    className="inline-flex h-10 items-center justify-center gap-1 rounded-xl border border-[#e3ded2] bg-white px-2 text-[11px] font-semibold text-[#5b554a] transition hover:bg-[#f3f0e9] disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-xs"
+                  >
+                    <RotateCcw size={13} />
+                    Reset Selection
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingImageIndex(null);
+                      selectionGesture.current = null;
+                    }}
+                    disabled={isApplyingBlur}
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-[#e3ded2] bg-white px-3 text-xs font-semibold text-[#4d493f] transition hover:bg-[#f3f0e9] disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void applyNumberPlateBlur(editingImageIndex)}
+                    disabled={
+                      !activeEditorHasValidSelection ||
+                      isApplyingBlur ||
+                      isSaving ||
+                      isUploading
+                    }
+                    className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[#75602f] px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#5f4d26] disabled:cursor-not-allowed disabled:opacity-50 sm:px-5"
+                  >
+                    {isApplyingBlur ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <ShieldCheck size={15} />
+                    )}
+                    Apply Blur
+                  </button>
+                </div>
+              </div>
+            </main>
+          </div>
+        </div>
+      )}
       {isBrandModalOpen && category && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#14110a]/45 p-4 backdrop-blur-sm"
