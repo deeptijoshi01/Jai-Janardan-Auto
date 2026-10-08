@@ -109,58 +109,58 @@ function BestSellerSkeleton() {
       aria-hidden="true"
       className="
         overflow-hidden
-        rounded-2xl
+        rounded-[18px]
         border
-        border-[#e8e2d8]
-        bg-white
-        shadow-[0_5px_22px_rgba(15,23,42,0.045)]
+        border-[#e9e6df]
+        bg-[#fffefa]
+        shadow-[0_3px_14px_rgba(11,26,51,0.04)]
       "
     >
       {/* Image */}
 
       <div
         className="
-          aspect-[4/3]
+          aspect-[16/9]
           animate-pulse
-          bg-[#eeeae2]
+          bg-[#f0eee8]
         "
       />
 
       {/* Content */}
 
-      <div className="space-y-4 p-4 sm:p-5">
+      <div className="space-y-3 p-4 sm:p-[18px]">
         {/* Category */}
 
-        <div className="h-3 w-20 animate-pulse rounded bg-[#eeeae2]" />
+        <div className="h-2.5 w-24 animate-pulse rounded bg-[#eeeae2]" />
 
         {/* Title */}
 
-        <div className="h-6 w-4/5 animate-pulse rounded bg-[#eeeae2]" />
+        <div className="h-5 w-4/5 animate-pulse rounded bg-[#eeeae2]" />
 
         {/* Subtitle */}
 
-        <div className="h-4 w-3/5 animate-pulse rounded bg-[#f1ede6]" />
+        <div className="h-3.5 w-3/5 animate-pulse rounded bg-[#f1ede6]" />
 
         {/* Specs */}
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="h-10 animate-pulse rounded-lg bg-[#f6f3ed]" />
-          <div className="h-10 animate-pulse rounded-lg bg-[#f6f3ed]" />
-          <div className="h-10 animate-pulse rounded-lg bg-[#f6f3ed]" />
-          <div className="h-10 animate-pulse rounded-lg bg-[#f6f3ed]" />
+          <div className="h-7 animate-pulse rounded bg-[#f6f3ed]" />
+          <div className="h-7 animate-pulse rounded bg-[#f6f3ed]" />
+          <div className="h-7 animate-pulse rounded bg-[#f6f3ed]" />
+          <div className="h-7 animate-pulse rounded bg-[#f6f3ed]" />
         </div>
 
         {/* Price */}
 
-        <div className="border-t border-[#eee9df] pt-4">
+        <div className="border-t border-[#eee9df] pt-3">
           <div className="h-3 w-20 animate-pulse rounded bg-[#f1ede6]" />
 
-          <div className="mt-2 h-7 w-28 animate-pulse rounded bg-[#eeeae2]" />
+          <div className="mt-2 h-6 w-28 animate-pulse rounded bg-[#eeeae2]" />
         </div>
 
         {/* Button */}
 
-        <div className="h-11 animate-pulse rounded-xl bg-[#eeeae2]" />
+        <div className="h-9 animate-pulse rounded-lg bg-[#eeeae2]" />
       </div>
     </div>
   );
@@ -289,63 +289,14 @@ function Home() {
         <section
           aria-labelledby="best-selling-vehicles-heading"
           aria-busy={loadingBestSellers}
-          className="
-            relative
-            overflow-hidden
-            bg-[#fbfaf7]
-            py-14
-            sm:py-16
-            lg:py-20
-          "
+          className="relative overflow-hidden bg-[#faf9f6] py-14 sm:py-[4.5rem] lg:py-20"
         >
-          {/* ==================================================== */}
-          {/* VERY SUBTLE BACKGROUND ACCENT                         */}
-          {/* ==================================================== */}
-
-          <div
-            aria-hidden="true"
-            className="
-              pointer-events-none
-              absolute
-              -right-32
-              top-20
-              h-72
-              w-72
-              rounded-full
-              bg-[#c9a24b]/[0.045]
-              blur-3xl
-            "
-          />
-
-          <div
-            aria-hidden="true"
-            className="
-              pointer-events-none
-              absolute
-              -left-40
-              bottom-0
-              h-80
-              w-80
-              rounded-full
-              bg-[#0b1a33]/[0.025]
-              blur-3xl
-            "
-          />
-
           {/* ==================================================== */}
           {/* CONTAINER                                             */}
           {/* ==================================================== */}
 
           <div
-            className="
-              relative
-              mx-auto
-              max-w-[1500px]
-              px-4
-              sm:px-6
-              lg:px-10
-              xl:px-12
-            "
+            className="relative mx-auto max-w-[1320px] px-5 sm:px-8 lg:px-10"
           >
             {/* ================================================== */}
             {/* SECTION HEADER                                      */}
@@ -353,14 +304,14 @@ function Home() {
 
             <div
               className="
-                mb-8
+                mb-7
                 flex
                 flex-col
                 justify-between
-                gap-5
-                sm:mb-10
+                gap-4
+                sm:mb-9
                 sm:flex-row
-                sm:items-end
+                sm:items-center
               "
             >
               {/* Heading */}
@@ -368,11 +319,11 @@ function Home() {
               <div className="max-w-2xl">
                 {/* Eyebrow */}
 
-                <div className="mb-2.5 flex items-center gap-2.5">
+                <div className="mb-3 flex items-center gap-3">
                   <span
                     className="
-                      h-[2px]
-                      w-7
+                      h-px
+                      w-8
                       bg-[#c9a24b]
                     "
                   />
@@ -380,11 +331,11 @@ function Home() {
                   <span
                     className="
                       text-[10px]
-                      font-extrabold
+                      font-bold
                       uppercase
-                      tracking-[0.22em]
-                      text-[#c84b0a]
-                      sm:text-xs
+                      tracking-[0.24em]
+                      text-[#a77f39]
+                      sm:text-[11px]
                     "
                   >
                     Our Best Sellers
@@ -396,13 +347,14 @@ function Home() {
                 <h2
                   id="best-selling-vehicles-heading"
                   className="
+                    font-serif
                     text-[2rem]
-                    font-extrabold
-                    leading-[1.08]
-                    tracking-[-0.035em]
+                    font-bold
+                    leading-[1.1]
+                    tracking-[-0.03em]
                     text-[#0b1a33]
-                    sm:text-3xl
-                    lg:text-[2.65rem]
+                    sm:text-[2.5rem]
+                    lg:text-[2.75rem]
                   "
                 >
                   Best Selling{" "}
@@ -415,13 +367,12 @@ function Home() {
 
                 <p
                   className="
-                    mt-2.5
+                    mt-2
                     max-w-xl
                     text-sm
-                    leading-6
-                    text-[#697482]
+                    leading-[1.65]
+                    text-[#667080]
                     sm:text-[15px]
-                    sm:leading-6
                   "
                 >
                   Top commercial vehicles selected
@@ -439,26 +390,24 @@ function Home() {
                   className="
                     group
                     inline-flex
-                    h-11
+                    h-10
                     shrink-0
                     items-center
                     justify-center
                     gap-2
                     self-start
-                    rounded-xl
+                    rounded-full
                     border
-                    border-[#d9c89e]
-                    bg-white
+                    border-[#d8c9aa]
+                    bg-[#fffefa]
                     px-5
-                    text-sm
-                    font-bold
+                    text-[13px]
+                    font-semibold
                     text-[#0b1a33]
-                    shadow-[0_4px_14px_rgba(15,23,42,0.035)]
-                    transition-all
-                    duration-300
-                    hover:border-[#c9a24b]
-                    hover:bg-[#fffaf0]
-                    hover:shadow-[0_8px_22px_rgba(15,23,42,0.07)]
+                    transition-colors
+                    duration-200
+                    hover:border-[#b18a3d]
+                    hover:bg-white
                     focus-visible:outline
                     focus-visible:outline-2
                     focus-visible:outline-offset-2
@@ -471,7 +420,7 @@ function Home() {
                   <span
                     aria-hidden="true"
                     className="
-                      text-[#c84b0a]
+                      text-[#a77f39]
                       transition-transform
                       duration-300
                       group-hover:translate-x-1
@@ -488,16 +437,7 @@ function Home() {
             {/* ================================================== */}
 
             <div
-              className="
-                grid
-                grid-cols-1
-                gap-5
-                sm:grid-cols-2
-                sm:gap-5
-                lg:grid-cols-3
-                xl:grid-cols-4
-                2xl:gap-6
-              "
+              className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4"
             >
               {/* ================================================= */}
               {/* LOADING                                            */}
@@ -535,28 +475,27 @@ function Home() {
             {/* ================================================== */}
 
             {!loadingBestSellers && (
-              <div className="mt-8 flex justify-center sm:hidden">
+              <div className="mt-7 flex justify-center sm:hidden">
                 <Link
                   to="/vehicles"
                   className="
                     group
                     inline-flex
-                    h-11
+                    h-10
                     items-center
                     justify-center
                     gap-2
-                    rounded-xl
+                    rounded-full
                     border
-                    border-[#d9c89e]
-                    bg-white
+                    border-[#d8c9aa]
+                    bg-[#fffefa]
                     px-5
-                    text-sm
-                    font-bold
+                    text-[13px]
+                    font-semibold
                     text-[#0b1a33]
-                    shadow-sm
-                    transition
-                    hover:border-[#c9a24b]
-                    hover:bg-[#fffaf0]
+                    transition-colors
+                    hover:border-[#b18a3d]
+                    hover:bg-white
                   "
                 >
                   View All Vehicles
@@ -564,7 +503,7 @@ function Home() {
                   <span
                     aria-hidden="true"
                     className="
-                      text-[#c84b0a]
+                      text-[#a77f39]
                       transition-transform
                       group-hover:translate-x-1
                     "

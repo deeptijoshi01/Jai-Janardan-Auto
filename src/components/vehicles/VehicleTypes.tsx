@@ -9,10 +9,14 @@ import transitMixerImg from "../../assets/VehicleTypes/Transit Mixers.png";
 import truckImg from "../../assets/VehicleTypes/Truck.png";
 
 const fontCss = `
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Manrope:wght@400;500;600;700;800&display=swap');
 
 .vt-sans {
   font-family: 'Manrope', system-ui, sans-serif;
+}
+
+.vt-serif {
+  font-family: 'DM Serif Display', Georgia, serif;
 }
 `;
 
@@ -64,41 +68,107 @@ export default function VehicleTypes() {
   const reduceMotion = useReducedMotion();
 
   return (
-    <section className="vt-sans relative overflow-hidden bg-white py-14 sm:py-16 lg:py-20">
+    <section className="vt-sans relative overflow-hidden bg-[#f7f5ef] py-8 sm:py-10 lg:py-12">
       <style>{fontCss}</style>
 
-      <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-10">
+      <div className="mx-auto max-w-[1450px] px-4 sm:px-6 lg:px-10">
 
-        {/* ================= HEADER ================= */}
-        <div className="mb-8 sm:mb-10">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="h-[2px] w-7 bg-amber-500" />
+        {/* =========================================================
+            HEADER
+        ========================================================= */}
+        <div className="mb-5 flex items-end justify-between sm:mb-6">
 
-            <span className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-amber-600 sm:text-xs">
-              Our Collection
-            </span>
+          <div>
+            {/* Small eyebrow */}
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="h-[1.5px] w-7 bg-[#d99a20]" />
+
+              <span
+                className="
+                  text-[8px]
+                  font-extrabold
+                  uppercase
+                  tracking-[0.28em]
+                  text-[#7d6b4b]
+                  sm:text-[9px]
+                "
+              >
+                Explore Our Range
+              </span>
+            </div>
+
+            {/* Main heading */}
+            <h2
+              className="
+                vt-serif
+                text-[25px]
+                leading-[1.05]
+                tracking-[-0.02em]
+                text-[#14243d]
+                sm:text-[30px]
+                lg:text-[34px]
+              "
+            >
+              Vehicle Categories
+            </h2>
           </div>
 
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-            Explore Vehicle{" "}
-            <span className="text-amber-500">Categories</span>
-          </h2>
+          {/* Decorative navigation controls
+              Visual only — no functionality changed */}
+          <div className="hidden items-center gap-2 sm:flex">
+            <span
+              className="
+                flex
+                h-7
+                w-7
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-[#ddd8cc]
+                bg-white/70
+                text-sm
+                text-[#26364c]
+              "
+            >
+              ←
+            </span>
 
-          <p className="mt-2 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm">
-            Explore the range of vehicles available at Jai Janardan Auto.
-          </p>
+            <span
+              className="
+                flex
+                h-7
+                w-7
+                items-center
+                justify-center
+                rounded-full
+                bg-[#d89b25]
+                text-sm
+                font-semibold
+                text-white
+                shadow-sm
+              "
+            >
+              →
+            </span>
+          </div>
         </div>
 
-        {/* ================= CATEGORY SHOWCASE ================= */}
+        {/* =========================================================
+            CATEGORY CARDS
+        ========================================================= */}
         <div
           className="
-            grid
-            grid-cols-2
-            gap-3
-            sm:grid-cols-3
-            sm:gap-4
+            flex
+            gap-1.5
+            overflow-x-auto
+            pb-2
+            scrollbar-hide
+            sm:gap-2
+            lg:grid
             lg:grid-cols-7
-            lg:gap-4
+            lg:overflow-visible
+            lg:pb-0
           "
         >
           {vehicleCategories.map((category, index) => (
@@ -109,7 +179,7 @@ export default function VehicleTypes() {
                   ? false
                   : {
                       opacity: 0,
-                      y: 18,
+                      y: 12,
                     }
               }
               whileInView={
@@ -125,48 +195,51 @@ export default function VehicleTypes() {
                 amount: 0.15,
               }}
               transition={{
-                duration: 0.4,
-                delay: reduceMotion ? 0 : index * 0.05,
+                duration: 0.35,
+                delay: reduceMotion ? 0 : index * 0.04,
               }}
               whileHover={
                 reduceMotion
                   ? undefined
                   : {
-                      y: -5,
+                      y: -3,
                     }
               }
               className="
                 group
                 relative
-                min-w-0
+                flex
+                min-w-[126px]
+                flex-1
+                flex-col
                 overflow-hidden
-                rounded-xl
+                rounded-[11px]
                 border
-                border-slate-200
-                bg-white
-                shadow-[0_3px_14px_rgba(15,23,42,0.045)]
+                border-[#ded9ce]
+                bg-[#fdfcf9]
+                shadow-[0_2px_8px_rgba(30,41,59,0.035)]
                 transition-all
                 duration-300
-                hover:border-amber-300
-                hover:shadow-[0_12px_28px_rgba(15,23,42,0.10)]
+                hover:border-[#d8b56a]
+                hover:bg-white
+                hover:shadow-[0_8px_22px_rgba(30,41,59,0.10)]
+                sm:min-w-[140px]
+                lg:min-w-0
               "
             >
 
-              {/* ================= IMAGE ================= */}
+              {/* =====================================================
+                  IMAGE
+              ===================================================== */}
               <div
                 className="
                   relative
-                  flex
-                  h-28
-                  items-center
-                  justify-center
+                  h-[78px]
+                  w-full
                   overflow-hidden
-                  bg-gradient-to-br
-                  from-slate-50
-                  to-white
-                  sm:h-32
-                  lg:h-32
-                  xl:h-36
+                  bg-[#eeeae1]
+                  sm:h-[88px]
+                  lg:h-[92px]
                 "
               >
                 <img
@@ -176,72 +249,120 @@ export default function VehicleTypes() {
                   className="
                     h-full
                     w-full
-                    object-contain
-                    p-2
+                    object-cover
+                    object-center
                     transition-transform
                     duration-500
                     ease-out
-                    group-hover:scale-110
-                    sm:p-3
+                    group-hover:scale-[1.045]
                   "
                 />
 
-                {/* Small Premium Accent */}
+                {/* Soft image overlay */}
+                <div
+                  className="
+                    pointer-events-none
+                    absolute
+                    inset-0
+                    bg-gradient-to-t
+                    from-black/[0.08]
+                    via-transparent
+                    to-white/[0.04]
+                  "
+                />
+
+                {/* Tiny premium accent */}
                 <span
                   className="
                     absolute
                     left-2
                     top-2
-                    h-1
+                    h-[3px]
                     w-5
                     rounded-full
-                    bg-amber-400
+                    bg-[#dca329]
                     transition-all
                     duration-300
-                    group-hover:w-8
+                    group-hover:w-7
                   "
                 />
               </div>
 
-              {/* ================= CATEGORY NAME ================= */}
+              {/* =====================================================
+                  CATEGORY FOOTER
+              ===================================================== */}
               <div
                 className="
+                  relative
                   flex
-                  min-h-[52px]
+                  min-h-[43px]
                   items-center
-                  justify-center
+                  justify-between
+                  gap-1
                   border-t
-                  border-slate-100
+                  border-[#e8e3d9]
+                  bg-[#fdfcf9]
                   px-2
-                  py-3
-                  text-center
+                  py-2
+                  sm:min-h-[45px]
+                  sm:px-2.5
                 "
               >
                 <span
                   className="
-                    text-[10px]
+                    min-w-0
+                    truncate
+                    text-[8px]
                     font-bold
                     leading-tight
-                    text-slate-800
+                    text-[#27364b]
                     transition-colors
                     duration-300
-                    group-hover:text-amber-700
-                    sm:text-xs
+                    group-hover:text-[#b77a0b]
+                    sm:text-[9px]
+                    lg:text-[9px]
                   "
                 >
                   {category.name}
                 </span>
-              </div>
 
+                {/* Circular arrow — visual only */}
+                <span
+                  className="
+                    flex
+                    h-[20px]
+                    w-[20px]
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-full
+                    border
+                    border-[#d8d3c9]
+                    bg-white
+                    text-[11px]
+                    font-medium
+                    text-[#4b5563]
+                    transition-all
+                    duration-300
+                    group-hover:border-[#d6a12e]
+                    group-hover:bg-[#d6a12e]
+                    group-hover:text-white
+                  "
+                >
+                  →
+                </span>
+              </div>
             </motion.div>
           ))}
         </div>
 
-        {/* ================= BOTTOM ACCENT ================= */}
-        <div className="mt-8 flex items-center justify-center gap-2 sm:mt-10">
-          <span className="h-px w-10 bg-slate-200" />
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-          <span className="h-px w-10 bg-slate-200" />
+        {/* =========================================================
+            BOTTOM ACCENT
+        ========================================================= */}
+        <div className="mt-5 flex items-center justify-center sm:mt-6">
+          <span className="h-px w-9 bg-[#ded9ce]" />
+          <span className="mx-2 h-[4px] w-[4px] rounded-full bg-[#dba126]" />
+          <span className="h-px w-9 bg-[#ded9ce]" />
         </div>
 
       </div>
