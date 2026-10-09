@@ -23,6 +23,7 @@ import {
 } from "../services/categoryBrandApi";
 
 import type {
+  Brand,
   Category,
   VehicleCategoryType,
 } from "../types/categoryBrand";
@@ -197,7 +198,7 @@ const PublicVehicles = () => {
     useState<Category[]>([]);
 
   const [brands, setBrands] =
-    useState<string[]>([]);
+    useState<Brand[]>([]);
 
   const [loading, setLoading] =
     useState(true);
@@ -223,7 +224,10 @@ const PublicVehicles = () => {
         )
     );
 
-  const [brand, setBrand] =
+  const [commercialBrand, setCommercialBrand] =
+    useState("");
+
+  const [carBrand, setCarBrand] =
     useState("");
 
   const [location, setLocation] =
@@ -321,8 +325,43 @@ const PublicVehicles = () => {
   }, []);
 
   /* ============================================================ */
-  /* LOAD BRANDS                                                    */
+  /* LOAD BRANDS                                                   */
   /* ============================================================ */
+
+  const commercialBrandOptions = useMemo(
+    () =>
+      [
+        ...new Set(
+          brands
+            .filter(
+              (brandItem) =>
+                brandItem.categoryType === "commercial"
+            )
+            .map((brandItem) => brandItem.name)
+        ),
+      ].sort((first, second) =>
+        first.localeCompare(second)
+      ),
+    [brands]
+  );
+
+  const carBrandOptions = useMemo(
+    () =>
+      [
+        ...new Set(
+          brands
+            .filter(
+              (brandItem) =>
+                brandItem.categoryType === "car" ||
+                brandItem.categoryType === "cars"
+            )
+            .map((brandItem) => brandItem.name)
+        ),
+      ].sort((first, second) =>
+        first.localeCompare(second)
+      ),
+    [brands]
+  );
 
   useEffect(() => {
     let isMounted = true;
@@ -335,18 +374,10 @@ const PublicVehicles = () => {
       setLoadingBrands(true);
 
       try {
-        const result = await fetchBrands(
-          category || undefined
-        );
+        const result = await fetchBrands();
 
         if (isMounted) {
-          setBrands(
-            [...new Set(result.map((item) => item.name))]
-              .sort((a, b) =>
-                a.localeCompare(b)
-              )
-          );
-
+          setBrands(result);
           setCategoryBrandError("");
         }
       } catch (error) {
@@ -374,6 +405,31 @@ const PublicVehicles = () => {
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (
+      commercialBrand &&
+      !commercialBrandOptions.includes(commercialBrand)
+    ) {
+      setCommercialBrand("");
+    }
+  }, [commercialBrand, commercialBrandOptions]);
+
+  useEffect(() => {
+    if (carBrand && !carBrandOptions.includes(carBrand)) {
+      setCarBrand("");
+    }
+  }, [carBrand, carBrandOptions]);
+
+  useEffect(() => {
+    if (category === "commercial") {
+      setCarBrand("");
+    }
+
+    if (category === "cars") {
+      setCommercialBrand("");
+    }
   }, [category]);
 
   /* ============================================================ */
@@ -439,8 +495,10 @@ const PublicVehicles = () => {
         return (
           searchMatches &&
           categoryMatches &&
-          (!brand ||
-            vehicle.brand === brand) &&
+          (!commercialBrand ||
+            vehicle.brand === commercialBrand) &&
+          (!carBrand ||
+            vehicle.brand === carBrand) &&
           (!location ||
             vehicle.location === location) &&
           (!fuelType ||
@@ -490,8 +548,9 @@ const PublicVehicles = () => {
       }
     );
   }, [
-    brand,
+    carBrand,
     category,
+    commercialBrand,
     fuelType,
     location,
     priceRange,
@@ -508,7 +567,8 @@ const PublicVehicles = () => {
   const clearFilters = () => {
     setSearch("");
     setCategory("");
-    setBrand("");
+    setCommercialBrand("");
+    setCarBrand("");
     setLocation("");
     setFuelType("");
     setTransmission("");
@@ -522,7 +582,8 @@ const PublicVehicles = () => {
   const hasFilters = Boolean(
     search.trim() ||
       category ||
-      brand ||
+      commercialBrand ||
+      carBrand ||
       location ||
       fuelType ||
       transmission ||
@@ -535,7 +596,8 @@ const PublicVehicles = () => {
 
   const filterCount = [
     category,
-    brand,
+    commercialBrand,
+    carBrand,
     location,
     fuelType,
     transmission,
@@ -565,16 +627,23 @@ const PublicVehicles = () => {
             )?.name ?? category,
           clear: () => {
             setCategory("");
-            setBrand("");
           },
         }
       : null,
 
-    brand
+    commercialBrand
       ? {
-          key: "brand",
-          label: brand,
-          clear: () => setBrand(""),
+          key: "commercial-brand",
+          label: `Commercial Vehicles: ${commercialBrand}`,
+          clear: () => setCommercialBrand(""),
+        }
+      : null,
+
+    carBrand
+      ? {
+          key: "car-brand",
+          label: `Cars: ${carBrand}`,
+          clear: () => setCarBrand(""),
         }
       : null,
 
@@ -907,7 +976,7 @@ const PublicVehicles = () => {
             `}
           >
             <div className="overflow-hidden">
-              <div className="grid grid-cols-2 gap-2.5 pb-1 pt-3 sm:grid-cols-3 sm:gap-3 sm:pt-4 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-2.5 pb-1 pt-3 sm:grid-cols-3 sm:gap-3 sm:pt-4 lg:grid-cols-7">
 
                 {/* Category */}
 
@@ -915,13 +984,24 @@ const PublicVehicles = () => {
                   label="Category"
                   value={category}
                   onChange={(value) => {
-                    setCategory(
+                    const nextCategory =
                       value as
                         | VehicleCategoryType
-                        | ""
-                    );
+                        | "";
 
-                    setBrand("");
+                    setCategory(nextCategory);
+
+                    if (
+                      nextCategory === "commercial"
+                    ) {
+                      setCarBrand("");
+                    }
+
+                    if (
+                      nextCategory === "cars"
+                    ) {
+                      setCommercialBrand("");
+                    }
                   }}
                   options={[
                     {
@@ -938,20 +1018,36 @@ const PublicVehicles = () => {
                   ]}
                 />
 
-                {/* Brand */}
-
                 <FilterSelect
-                  label="Brand"
-                  value={brand}
-                  onChange={setBrand}
+                  label="Commercial Vehicles"
+                  value={commercialBrand}
+                  onChange={setCommercialBrand}
                   disabled={loadingBrands}
                   options={[
                     {
                       value: "",
-                      label: "All brands",
+                      label: "All Commercial Vehicles",
                     },
+                    ...commercialBrandOptions.map(
+                      (item) => ({
+                        value: item,
+                        label: item,
+                      })
+                    ),
+                  ]}
+                />
 
-                    ...brands.map(
+                <FilterSelect
+                  label="Cars"
+                  value={carBrand}
+                  onChange={setCarBrand}
+                  disabled={loadingBrands}
+                  options={[
+                    {
+                      value: "",
+                      label: "All Cars",
+                    },
+                    ...carBrandOptions.map(
                       (item) => ({
                         value: item,
                         label: item,
