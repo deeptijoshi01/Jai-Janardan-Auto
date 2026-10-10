@@ -21,9 +21,22 @@ import heroImage from "../assets/heo-bg.png";
 // Contact form submit zalyavar enquiry ya number var WhatsApp madhe janar.
 const ENQUIRY_WHATSAPP = "8378913269";
 
-// Exact location milale ki ha link Google Maps share link ne replace kara.
-const MAPS_URL =
-  "https://www.google.com/maps/search/?api=1&query=Jai+Janardan+Auto";
+// Google Maps share link (Get Directions button sathi).
+const MAPS_URL = "https://maps.app.goo.gl/oU7sCXnYKYz47Guf9";
+
+// Address
+const ADDRESS_NAME = "Jai Janardan Auto";
+const ADDRESS_LINES = [
+  "Nilgiri Bag Rd, Nandurnaka,",
+  "Nashik, Maharashtra 422006",
+];
+const ADDRESS_FULL =
+  "Jai Janardan Auto, Nilgiri Bag Rd, Nandurnaka, Nashik, Maharashtra 422006";
+
+// Embedded map (API key lagat nahi).
+const MAP_EMBED_URL = `https://www.google.com/maps?q=${encodeURIComponent(
+  ADDRESS_FULL
+)}&output=embed`;
 
 const team = [
   {
@@ -320,14 +333,20 @@ export default function Contact() {
                 <h3 className="text-lg font-semibold tracking-tight text-[#0f1c30]">
                   Visit Us
                 </h3>
-                <p className="text-xs text-[#7b8290]">Jai Janardan Auto</p>
+                <p className="text-xs text-[#7b8290]">{ADDRESS_NAME}</p>
               </div>
             </div>
 
-            <p className="mt-4 flex-1 text-sm leading-6 text-[#5a6270]">
-              Come see our vehicles in person. Open directions in Google Maps
-              and drive straight to us.
-            </p>
+            <address className="mt-4 flex-1 text-sm not-italic leading-6 text-[#5a6270]">
+              <span className="font-semibold text-[#0f1c30]">
+                {ADDRESS_NAME}
+              </span>
+              {ADDRESS_LINES.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+            </address>
 
             <a
               href={MAPS_URL}
@@ -344,6 +363,44 @@ export default function Contact() {
             </a>
           </motion.article>
         </div>
+      </section>
+
+      {/* ============================ MAP ============================ */}
+      <section className="mx-auto max-w-6xl px-5 pt-4 sm:px-8 lg:px-10">
+        <motion.div
+          {...fadeUp(0.1)}
+          className={`overflow-hidden p-2 sm:p-3 ${cardClass}`}
+        >
+          <div className="relative h-[320px] w-full overflow-hidden rounded-xl bg-[#f0ebdf] sm:h-[400px]">
+            <iframe
+              title={`${ADDRESS_NAME} location map`}
+              src={MAP_EMBED_URL}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full border-0"
+            />
+          </div>
+          <div className="flex flex-col gap-3 px-2 pb-2 pt-4 sm:flex-row sm:items-center sm:justify-between sm:px-3">
+            <p className="flex items-start gap-2.5 text-sm leading-6 text-[#5a6270]">
+              <MapPin
+                size={17}
+                className="mt-1 shrink-0 text-[#9a7424]"
+                aria-hidden="true"
+              />
+              <span>{ADDRESS_FULL}</span>
+            </p>
+            <a
+              href={MAPS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0f1c30] px-5 text-sm font-semibold text-white transition hover:bg-[#1a2d4a] active:scale-[0.98]"
+            >
+              <Compass size={16} aria-hidden="true" />
+              Open in Google Maps
+            </a>
+          </div>
+        </motion.div>
       </section>
 
       {/* ========================= CONTACT FORM ========================= */}

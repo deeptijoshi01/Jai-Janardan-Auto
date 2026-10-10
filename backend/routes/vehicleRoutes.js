@@ -1,6 +1,7 @@
 const express = require("express");
 const Brand = require("../models/Brand");
 const Vehicle = require("../models/Vehicle");
+const { requireAdmin } = require("../middleware/requireAdmin");
 
 const router = express.Router();
 const legacyCommercialCategories = [
@@ -154,7 +155,7 @@ router.get("/:id", async (req, res) => {
   ADD VEHICLE
   POST /api/vehicles
 */
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
   try {
     const categoryType = normalizeCategoryType(
       req.body.categoryType || req.body.category
@@ -191,7 +192,7 @@ router.post("/", async (req, res) => {
   UPDATE VEHICLE
   PUT /api/vehicles/:id
 */
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdmin, async (req, res) => {
   try {
     const existingVehicle = await Vehicle.findById(req.params.id);
     if (!existingVehicle) {
@@ -254,7 +255,7 @@ router.put("/:id", async (req, res) => {
   TOGGLE BEST SELLER
   PATCH /api/vehicles/:id/best-seller
 */
-router.patch("/:id/best-seller", async (req, res) => {
+router.patch("/:id/best-seller", requireAdmin, async (req, res) => {
   try {
     const { isBestSeller } = req.body;
 
@@ -294,7 +295,7 @@ router.patch("/:id/best-seller", async (req, res) => {
   DELETE VEHICLE
   DELETE /api/vehicles/:id
 */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const vehicle = await Vehicle.findByIdAndDelete(req.params.id);
 

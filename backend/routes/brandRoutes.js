@@ -3,6 +3,7 @@ const Brand = require("../models/Brand");
 const Category = require("../models/Category");
 const Vehicle = require("../models/Vehicle");
 const { slugify } = require("../utils/categoryBrandSeed");
+const { requireAdmin } = require("../middleware/requireAdmin");
 
 const router = express.Router();
 const validCategoryTypes = ["commercial", "cars", "car"];
@@ -18,7 +19,12 @@ const legacyCommercialCategories = [
   "Transit Mixer",
 ];
 
-router.get("/", async (req, res) => {
+router.get("/", (req, res, next) => {
+  if (req.query.includeInactive === "true") {
+    return requireAdmin(req, res, next);
+  }
+  return next();
+}, async (req, res) => {
   try {
     const requestedCategory = req.query.category;
     if (requestedCategory && !validCategoryTypes.includes(requestedCategory)) {
@@ -46,7 +52,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
   try {
     const requestedCategory = String(
       req.body.categoryType || req.body.category || ""
@@ -113,7 +119,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", requireAdmin, async (req, res) => {
   try {
     const brand = await Brand.findById(req.params.id);
     if (!brand) {
@@ -196,7 +202,7 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const brand = await Brand.findById(req.params.id);
     if (!brand) {

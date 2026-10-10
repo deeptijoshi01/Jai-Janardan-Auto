@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { fetchBrands, fetchCategories } from "../services/categoryBrandApi";
+import { adminFetch, API_BASE_URL } from "../services/adminAuth";
 import {
   brandCategoryTypeFor,
   type Brand,
@@ -17,7 +18,7 @@ import {
   type VehicleCategoryType,
 } from "../types/categoryBrand";
 
-const API_URL = "http://localhost:5000/api/brands";
+const API_URL = `${API_BASE_URL}/brands`;
 
 const Categories = () => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -73,7 +74,7 @@ const Categories = () => {
     setFormError("");
     setNotice("");
     try {
-      const response = await fetch(
+      const response = await adminFetch(
         editingBrand ? `${API_URL}/${editingBrand._id}` : API_URL,
         {
           method: editingBrand ? "PATCH" : "POST",
@@ -109,7 +110,7 @@ const Categories = () => {
     setError("");
     setNotice("");
     try {
-      const response = await fetch(`${API_URL}/${brand._id}`, {
+      const response = await adminFetch(`${API_URL}/${brand._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !brand.isActive }),
@@ -140,7 +141,7 @@ const Categories = () => {
     setError("");
     setNotice("");
     try {
-      const response = await fetch(`${API_URL}/${brand._id}`, { method: "DELETE" });
+      const response = await adminFetch(`${API_URL}/${brand._id}`, { method: "DELETE" });
       const data = (await response.json().catch(() => null)) as {
         success?: boolean;
         message?: string;

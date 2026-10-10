@@ -20,6 +20,7 @@ import {
 } from "../types/vehicle";
 import { fetchBrands, fetchCategories } from "../services/categoryBrandApi";
 import type { Brand, Category, VehicleCategoryType } from "../types/categoryBrand";
+import { adminFetch, API_BASE_URL } from "../services/adminAuth";
 
 interface VehicleResponse {
   success: boolean;
@@ -31,7 +32,7 @@ interface VehicleDetailsProps {
   mode: "view" | "edit";
 }
 
-const API_URL = "http://localhost:5000/api/vehicles";
+const API_URL = `${API_BASE_URL}/vehicles`;
 const inputClass =
   "h-12 w-full rounded-xl border border-[#e6e1d6] bg-[#fdfcf9] px-4 text-sm text-[#14110a] outline-none transition focus:border-[#c9a050] focus:bg-white focus:ring-4 focus:ring-[#c9a050]/15";
 const fuelTypes = ["Diesel", "Petrol", "CNG", "Electric", "Other"];
@@ -139,7 +140,7 @@ const VehicleDetails = ({ mode }: VehicleDetailsProps) => {
     setError("");
 
     try {
-      const response = await fetch(`${API_URL}/${vehicle._id}/best-seller`, {
+      const response = await adminFetch(`${API_URL}/${vehicle._id}/best-seller`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isBestSeller }),
@@ -177,7 +178,7 @@ const VehicleDetails = ({ mode }: VehicleDetailsProps) => {
     setSaving(true);
     setError("");
     try {
-      const response = await fetch(`${API_URL}/${vehicle._id}`, {
+      const response = await adminFetch(`${API_URL}/${vehicle._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

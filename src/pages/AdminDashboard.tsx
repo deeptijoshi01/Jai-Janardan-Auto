@@ -21,6 +21,7 @@ import {
 
 import bg1 from "../assets/admindashboard/bg1.png";
 import bg2 from "../assets/admindashboard/bg2.png";
+import { adminFetch, API_BASE_URL } from "../services/adminAuth";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -68,8 +69,8 @@ interface Enquiry {
 /* Config – change routes / endpoints here                             */
 /* ------------------------------------------------------------------ */
 
-const API_URL = "http://localhost:5000/api/vehicles";
-const ENQUIRIES_API = "http://localhost:5000/api/enquiries"; // optional
+const API_URL = `${API_BASE_URL}/vehicles`;
+const ENQUIRIES_API = `${API_BASE_URL}/enquiries`; // optional
 
 const ROUTES = {
   vehicles: "/admin/vehicles",
@@ -245,7 +246,7 @@ const AdminDashboard = () => {
 
     try {
       setDeletingId(vehicle._id);
-      const res = await fetch(`${API_URL}/${vehicle._id}`, { method: "DELETE" });
+      const res = await adminFetch(`${API_URL}/${vehicle._id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       setVehicles((prev) => prev.filter((v) => v._id !== vehicle._id));
     } catch {

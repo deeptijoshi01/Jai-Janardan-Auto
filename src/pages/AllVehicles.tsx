@@ -13,6 +13,7 @@ import {
 import { Link } from "react-router-dom";
 import bg2 from "../assets/admindashboard/bg2.png";
 import { getVehicleCategoryLabel, type Vehicle } from "../types/vehicle";
+import { adminFetch, API_BASE_URL } from "../services/adminAuth";
 
 interface VehiclesResponse {
   success: boolean;
@@ -20,7 +21,7 @@ interface VehiclesResponse {
   vehicles: Vehicle[];
 }
 
-const API_URL = "http://localhost:5000/api/vehicles";
+const API_URL = `${API_BASE_URL}/vehicles`;
 const card =
   "rounded-2xl border border-[#efeae0] bg-white shadow-[0_1px_2px_rgba(20,16,8,0.04),0_14px_34px_-22px_rgba(20,16,8,0.18)]";
 
@@ -95,7 +96,7 @@ const AllVehicles = () => {
     setDeletingId(vehicle._id);
     setError("");
     try {
-      const response = await fetch(`${API_URL}/${vehicle._id}`, {
+      const response = await adminFetch(`${API_URL}/${vehicle._id}`, {
         method: "DELETE",
       });
       const data = (await response.json()) as { success: boolean; message?: string };

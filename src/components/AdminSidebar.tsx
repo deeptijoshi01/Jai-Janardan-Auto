@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
 import {
@@ -18,7 +19,7 @@ import {
 // Adjust these two paths if this file lives in a different folder.
 import logo from "../assets/logo.png";
 import bg2 from "../assets/admindashboard/bg2.png";
-import { clearAdminSession } from "../services/adminAuth";
+import { logoutAdmin } from "../services/adminAuth";
 
 interface AdminSidebarProps {
   mobileOpen: boolean;
@@ -46,11 +47,19 @@ const styles = `
 const AdminSidebar = ({ mobileOpen, setMobileOpen }: AdminSidebarProps) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [logoutError, setLogoutError] = useState("");
 
-  const handleLogout = () => {
-    clearAdminSession();
-    setMobileOpen(false);
-    navigate("/admin/login", { replace: true });
+  const handleLogout = async () => {
+    setLogoutError("");
+    try {
+      await logoutAdmin();
+      setMobileOpen(false);
+      navigate("/admin/login", { replace: true });
+    } catch (error) {
+      setLogoutError(
+        error instanceof Error ? error.message : "Unable to end the admin session."
+      );
+    }
   };
 
   return (
@@ -179,9 +188,14 @@ const AdminSidebar = ({ mobileOpen, setMobileOpen }: AdminSidebarProps) => {
 
         {/* Logout */}
         <div className="shrink-0 border-t border-[#eee8da] bg-white/80 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+          {logoutError && (
+            <p role="alert" className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+              {logoutError}
+            </p>
+          )}
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={() => void handleLogout()}
             className="flex min-h-[46px] w-full items-center gap-3 rounded-xl px-4 text-sm font-medium text-[#4d493f] transition hover:bg-red-50 hover:text-red-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-300"
           >
             <LogOut size={19} strokeWidth={1.9} />

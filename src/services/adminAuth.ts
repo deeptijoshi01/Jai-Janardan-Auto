@@ -1,30 +1,18 @@
-const API_BASE_URL = "http://localhost:5000/api";
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
-export interface AdminLoginResponse {
-  success: boolean;
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "staff";
+  profileImage: string;
+}
+
+interface AuthResponse {
+  success?: boolean;
   message?: string;
-  token?: string;
-  expiresIn?: number;
-}
-
-export function getAdminToken(): string {
-  try {
-    return (
-      sessionStorage.getItem("adminToken") ||
-      localStorage.getItem("adminToken") ||
-      ""
-    );
-  } catch {
-    return "";
-  }
-}
-
-export function storeAdminSession(token: string, remember: boolean): void {
-  clearAdminSession();
-  const storage = remember ? localStorage : sessionStorage;
-  storage.setItem("adminToken", token);
-  storage.setItem("adminLoggedIn", "true");
-  if (remember) localStorage.setItem("adminRemember", "true");
+  user?: AdminUser;
 }
 
 export function clearAdminSession(): void {
@@ -35,28 +23,47 @@ export function clearAdminSession(): void {
     localStorage.removeItem("adminLoggedIn");
     localStorage.removeItem("adminRemember");
   } catch {
-    // Storage may be unavailable in restricted browser contexts.
+    // Legacy browser-stored sessions are removed when storage is available.
   }
 }
 
-export async function verifyAdminSession(): Promise<boolean> {
-  const token = getAdminToken();
-  if (!token) return false;
-  const response = await fetch(`${API_BASE_URL}/admin-auth/session`, {
-    headers: { Authorization: `Bearer ${token}` },
+export async function verifyAdminSession(): Promise<AdminUser | null> {
+  clearAdminSession();
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    credentials: "include",
+    cache: "no-store",
   });
-  return response.ok;
+  if (response.status === 401) return null;
+  const data = (await response.json().catch(() => null)) as AuthResponse | null;
+  if (!response.ok) {
+    throw new Error(data?.message || "Unable to verify the admin session.");
+  }
+  return data?.success && data.user ? data.user : null;
+}
+
+export async function logoutAdmin(): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok && response.status !== 401) {
+      const data = (await response.json().catch(() => null)) as AuthResponse | null;
+      throw new Error(data?.message || "Unable to end the admin session.");
+    }
+  } finally {
+    clearAdminSession();
+  }
 }
 
 export async function adminFetch(
   input: RequestInfo | URL,
   init: RequestInit = {}
 ): Promise<Response> {
-  const token = getAdminToken();
-  const headers = new Headers(init.headers);
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  const response = await fetch(input, { ...init, headers });
+  const response = await fetch(input, {
+    ...init,
+    credentials: "include",
+  });
   if (response.status === 401) {
     clearAdminSession();
     window.location.assign("/admin/login");

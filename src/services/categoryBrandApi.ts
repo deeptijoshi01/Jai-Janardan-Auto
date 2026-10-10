@@ -4,8 +4,7 @@ import type {
   Category,
   VehicleCategoryType,
 } from "../types/categoryBrand";
-
-const API_BASE_URL = "http://localhost:5000/api";
+import { API_BASE_URL } from "./adminAuth";
 
 interface CategoriesResponse {
   success: boolean;
@@ -20,7 +19,9 @@ interface BrandsResponse {
 }
 
 export async function fetchCategories(): Promise<Category[]> {
-  const response = await fetch(`${API_BASE_URL}/categories`);
+  const response = await fetch(`${API_BASE_URL}/categories`, {
+    credentials: "include",
+  });
   const data = (await response.json().catch(() => null)) as CategoriesResponse | null;
   if (!response.ok || !data?.success || !Array.isArray(data.categories)) {
     throw new Error(data?.message || "Unable to load categories.");
@@ -36,7 +37,10 @@ export async function fetchBrands(
   if (category) params.set("category", category);
   if (includeInactive) params.set("includeInactive", "true");
   const query = params.toString();
-  const response = await fetch(`${API_BASE_URL}/brands${query ? `?${query}` : ""}`);
+  const response = await fetch(
+    `${API_BASE_URL}/brands${query ? `?${query}` : ""}`,
+    { credentials: "include" }
+  );
   const data = (await response.json().catch(() => null)) as BrandsResponse | null;
   if (!response.ok || !data?.success || !Array.isArray(data.brands)) {
     throw new Error(data?.message || "Unable to load brands.");

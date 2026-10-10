@@ -18,12 +18,34 @@ const brandRoutes = require("./routes/brandRoutes");
 const adminAuthRoutes = require("./routes/adminAuthRoutes");
 const sellRequestRoutes = require("./routes/sellRequestRoutes");
 const { ensureCategoryBrandSeed } = require("./utils/categoryBrandSeed");
+const { ensureConfiguredAdmin } = require("./utils/adminUserSeed");
+const {
+  isLocalDevelopmentOrigin,
+  requireAdmin,
+} = require("./middleware/requireAdmin");
 
 // ======================================================
 // ENVIRONMENT
 // ======================================================
 
 dotenv.config({ path: path.join(__dirname, ".env") });
+
+if (process.env.NODE_ENV !== "production") {
+  const smtpVariables = [
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USER",
+    "SMTP_PASS",
+    "MAIL_FROM",
+    "FRONTEND_URL",
+  ];
+  console.info(
+    "Password-reset configuration loaded:",
+    Object.fromEntries(
+      smtpVariables.map((name) => [name, Boolean(process.env[name]?.trim())])
+    )
+  );
+}
 
 // MongoDB SRV DNS workaround
 dns.setServers(["8.8.8.8"]);
@@ -38,9 +60,31 @@ const app = express();
 // MIDDLEWARE
 // ======================================================
 
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+
+const configuredFrontendOrigin = (() => {
+  try {
+    return process.env.FRONTEND_URL ? new URL(process.env.FRONTEND_URL).origin : "";
+  } catch {
+    return "";
+  }
+})();
+const secureProductionFrontend =
+  process.env.NODE_ENV !== "production" ||
+  (process.env.FRONTEND_URL || "").startsWith("https://");
+if (!secureProductionFrontend) {
+  console.error("Production frontend configuration must use an HTTPS FRONTEND_URL.");
+}
+
 app.use(
   cors({
-    origin: true,
+    origin(origin, callback) {
+      const allowed =
+        !origin ||
+        (secureProductionFrontend && origin === configuredFrontendOrigin) ||
+        isLocalDevelopmentOrigin(origin);
+      callback(null, allowed);
+    },
     credentials: true,
   })
 );
@@ -56,6 +100,7 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(async () => {
     await ensureCategoryBrandSeed();
+    await ensureConfiguredAdmin();
     console.log("========================================");
     console.log("MongoDB connected successfully");
     console.log("========================================");
@@ -274,6 +319,7 @@ app.get("/api/cloudinary/test", async (req, res) => {
 
 app.post(
   "/api/upload",
+  requireAdmin,
   upload.single("image"),
   async (req, res) => {
     try {
@@ -361,7 +407,11 @@ app.post(
 // ======================================================
 
 app.post(
-  "/api/upload-multiple",
+  ["/api/upload-multiple", "/api/admin/upload-multiple"],
+  (req, res, next) =>
+    req.path === "/api/admin/upload-multiple"
+      ? requireAdmin(req, res, next)
+      : next(),
   uploadMultiple,
 
   async (req, res) => {
@@ -517,6 +567,7 @@ app.use(
 app.use("/api/categories", categoryRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/admin-auth", adminAuthRoutes);
+app.use("/api/auth", adminAuthRoutes);
 app.use("/api/sell-requests", sellRequestRoutes);
 
 // ======================================================

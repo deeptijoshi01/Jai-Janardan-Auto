@@ -27,6 +27,8 @@ import type { Vehicle } from "./types/vehicle";
 import AdminLayout from "./admin/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminLogin from "./pages/AdminLogin";
+import AdminForgotPassword from "./pages/AdminForgotPassword";
+import AdminResetPassword from "./pages/AdminResetPassword";
 import AddVehicle from "./pages/AddVehicle";
 import AllVehicles from "./pages/AllVehicles";
 import AdminCategories from "./pages/Categories";
@@ -674,6 +676,14 @@ function App() {
         <Route
           path="/admin/login"
           element={<AdminLogin />}
+        />
+        <Route
+          path="/admin/forgot-password"
+          element={<AdminForgotPassword />}
+        />
+        <Route
+          path="/admin/reset-password"
+          element={<AdminResetPassword />}
         />
 
         {/* ====================================================== */}

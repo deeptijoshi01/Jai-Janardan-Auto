@@ -16,7 +16,7 @@ import {
 
 import heroBg from "../assets/heo-bg.png";
 import logo from "../assets/logo.png";
-import { storeAdminSession } from "../services/adminAuth";
+import { API_BASE_URL, clearAdminSession } from "../services/adminAuth";
 
 /* Tokens: ink #0f0e0c · gold #c9a050 · light gold #e0b866 */
 
@@ -95,20 +95,20 @@ const AdminLogin = () => {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/admin-auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        credentials: "include",
+        body: JSON.stringify({ email: email.trim(), password, remember: rememberMe }),
       });
       const data = (await response.json().catch(() => null)) as {
         success?: boolean;
         message?: string;
-        token?: string;
       } | null;
-      if (!response.ok || !data?.success || !data.token) {
+      if (!response.ok || !data?.success) {
         throw new Error(data?.message || "Unable to sign in.");
       }
-      storeAdminSession(data.token, rememberMe);
+      clearAdminSession();
       setSuccess(true);
       setTimeout(() => navigate("/admin"), 500);
     } catch (loginError) {
@@ -258,12 +258,12 @@ const AdminLogin = () => {
                 />
                 <span className="text-sm text-white/75">Remember me</span>
               </label>
-              <button
-                type="button"
+              <Link
+                to="/admin/forgot-password"
                 className="min-h-[44px] text-sm font-semibold text-[#e0b866] transition hover:text-[#f3d794]"
               >
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             <button
