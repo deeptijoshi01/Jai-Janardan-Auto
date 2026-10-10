@@ -16,6 +16,7 @@ const vehicleRoutes = require("./routes/vehicleRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const brandRoutes = require("./routes/brandRoutes");
 const adminAuthRoutes = require("./routes/adminAuthRoutes");
+const enquiryRoutes = require("./routes/enquiryRoutes");
 const sellRequestRoutes = require("./routes/sellRequestRoutes");
 const { ensureCategoryBrandSeed } = require("./utils/categoryBrandSeed");
 const { ensureConfiguredAdmin } = require("./utils/adminUserSeed");
@@ -568,6 +569,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/admin-auth", adminAuthRoutes);
 app.use("/api/auth", adminAuthRoutes);
+app.use("/api/enquiries", enquiryRoutes);
 app.use("/api/sell-requests", sellRequestRoutes);
 
 // ======================================================

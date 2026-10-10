@@ -7,10 +7,6 @@ import {
   PlusCircle,
   Tags,
   MessageSquare,
-  Users,
-  Receipt,
-  BarChart3,
-  Settings,
   LogOut,
   X,
   ClipboardList,
@@ -33,10 +29,6 @@ const menuItems = [
   { name: "Sell Requests", path: "/admin/sell-requests", icon: ClipboardList },
   { name: "Categories", path: "/admin/categories", icon: Tags },
   { name: "Enquiries", path: "/admin/enquiries", icon: MessageSquare },
-  { name: "Customers", path: "/admin/customers", icon: Users },
-  { name: "Sales", path: "/admin/sales", icon: Receipt },
-  { name: "Reports", path: "/admin/reports", icon: BarChart3 },
-  { name: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
 const styles = `

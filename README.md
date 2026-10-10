@@ -97,6 +97,17 @@ db.adminusers.createIndex(
 );
 ```
 
+## Contact enquiries
+
+Contact Form submissions are saved through `POST /api/enquiries` with a
+client-generated idempotency key, so retrying a request does not create another
+enquiry. Admins can search and update enquiry status at **Admin → Enquiries**;
+the list and status endpoint require the existing admin session. The form then
+opens a WhatsApp click-to-chat message to the existing dealership contact.
+Customers must press **Send** in WhatsApp for the message to be delivered;
+this project does not automatically send WhatsApp messages through the
+Business Platform API.
+
 ## Vehicle categories and brands
 
 The backend creates the two active categories and their default brands when MongoDB connects:

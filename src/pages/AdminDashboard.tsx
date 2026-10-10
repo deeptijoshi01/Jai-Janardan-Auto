@@ -16,7 +16,6 @@ import {
   Pencil,
   Trash2,
   MessageSquare,
-  BarChart3,
 } from "lucide-react";
 
 import bg1 from "../assets/admindashboard/bg1.png";
@@ -78,7 +77,6 @@ const ROUTES = {
   view: (id: string) => `/admin/vehicles/${id}`,
   edit: (id: string) => `/admin/vehicles/edit/${id}`,
   enquiries: "/admin/enquiries",
-  reports: "/admin/reports",
 };
 
 /* ------------------------------------------------------------------ */
@@ -200,7 +198,7 @@ const AdminDashboard = () => {
 
   const fetchEnquiries = async () => {
     try {
-      const res = await fetch(ENQUIRIES_API);
+      const res = await adminFetch(ENQUIRIES_API, { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
       const list = data.enquiries ?? data.data ?? [];
@@ -391,7 +389,6 @@ const AdminDashboard = () => {
     { title: "Add Vehicle", sub: "List a new vehicle", icon: Plus, to: ROUTES.add, tint: "bg-[#fbf1dc] text-[#b98a32]" },
     { title: "View Inventory", sub: "Manage vehicles", icon: Truck, to: ROUTES.vehicles, tint: "bg-emerald-50 text-emerald-600" },
     { title: "Enquiries", sub: "View all enquiries", icon: MessageSquare, to: ROUTES.enquiries, tint: "bg-sky-50 text-sky-600" },
-    { title: "Sales Report", sub: "View analytics", icon: BarChart3, to: ROUTES.reports, tint: "bg-rose-50 text-rose-500" },
   ];
 
   const renderActions = (vehicle: Vehicle) => (

@@ -9,17 +9,18 @@ import {
   Phone,
   Send,
 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 
 import heroImage from "../assets/heo-bg.png";
+import { API_BASE_URL } from "../services/adminAuth";
 
 /* -------------------------------------------------------------------------- */
 /*  CONFIG                                                                    */
 /* -------------------------------------------------------------------------- */
 
 // Contact form submit zalyavar enquiry ya number var WhatsApp madhe janar.
-const ENQUIRY_WHATSAPP = "8378913269";
+const ENQUIRY_WHATSAPP = "7972643129";
 
 // Google Maps share link (Get Directions button sathi).
 const MAPS_URL = "https://maps.app.goo.gl/oU7sCXnYKYz47Guf9";
@@ -74,14 +75,18 @@ const initials = (name: string) =>
 type FormState = {
   fullName: string;
   phone: string;
+  email: string;
   interest: string;
+  vehicleDetails: string;
   message: string;
 };
 
 const initialForm: FormState = {
   fullName: "",
   phone: "",
+  email: "",
   interest: interests[0],
+  vehicleDetails: "",
   message: "",
 };
 
@@ -114,6 +119,9 @@ export default function Contact() {
   );
   const [sent, setSent] = useState(false);
   const [lastLink, setLastLink] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const submissionId = useRef(crypto.randomUUID());
 
   const fadeUp = (delay = 0) => ({
     initial: reduceMotion ? false : { opacity: 0, y: 20 },
@@ -132,12 +140,15 @@ export default function Contact() {
     const next: Partial<Record<keyof FormState, string>> = {};
     const name = form.fullName.trim();
     const phone = form.phone.trim();
+    const email = form.email.trim();
     const message = form.message.trim();
 
     if (!name) next.fullName = "Please enter your name.";
     if (!phone) next.phone = "Phone number is required.";
     else if (!/^\+?[0-9][0-9\s()-]{7,18}$/.test(phone))
       next.phone = "Enter a valid phone number.";
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      next.email = "Enter a valid email address.";
     if (!message) next.message = "Please tell us how we can help.";
     else if (message.length < 8) next.message = "Please write a little more.";
 
@@ -145,30 +156,72 @@ export default function Contact() {
     return Object.keys(next).length === 0;
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (submitting || !validate()) return;
 
+    setSubmitError("");
     const text = encodeURIComponent(
       [
         "*New Enquiry - Jai Janardan Auto*",
         "",
         `Name: ${form.fullName.trim()}`,
         `Phone: ${form.phone.trim()}`,
+        ...(form.email.trim() ? [`Email: ${form.email.trim()}`] : []),
         `Interested in: ${form.interest}`,
+        ...(form.vehicleDetails.trim()
+          ? [`Vehicle: ${form.vehicleDetails.trim()}`]
+          : []),
         "",
         `Message: ${form.message.trim()}`,
       ].join("\n")
     );
     const link = waHref(ENQUIRY_WHATSAPP, text);
 
-    // Direct click handler madhech open kela mhanje mobile var block hot nahi.
-    const win = window.open(link, "_blank", "noopener,noreferrer");
-    if (!win) window.location.href = link;
+    const whatsappWindow = window.open("about:blank", "_blank");
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/enquiries`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: submissionId.current,
+          name: form.fullName.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          interest: form.interest,
+          vehicleDetails: form.vehicleDetails.trim(),
+          message: form.message.trim(),
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        success?: boolean;
+        message?: string;
+      } | null;
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || "Unable to save your enquiry.");
+      }
 
-    setLastLink(link);
-    setSent(true);
-    setForm(initialForm);
+      if (whatsappWindow) {
+        whatsappWindow.opener = null;
+        whatsappWindow.location.href = link;
+      }
+      setLastLink(link);
+      setSent(true);
+      setForm(initialForm);
+      submissionId.current = crypto.randomUUID();
+    } catch (error) {
+      whatsappWindow?.close();
+      setSubmitError(
+        error instanceof TypeError
+          ? "We could not reach the enquiry service. Your details have not been submitted; please try again."
+          : error instanceof Error
+            ? error.message
+            : "We could not save your enquiry. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -418,8 +471,8 @@ export default function Contact() {
               Send us a message.
             </h2>
             <p className="mt-4 max-w-sm text-sm leading-6 text-[#5a6270] sm:text-base">
-              Fill in a few details and tap send. Your enquiry opens directly in
-              WhatsApp so our team can reply fast.
+              Submit your details to save your enquiry with our team. We&apos;ll
+              also open WhatsApp with a ready-to-send message.
             </p>
 
             <div className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-emerald-600/20 bg-emerald-50 px-4 py-2 text-xs font-medium text-emerald-800">
@@ -427,7 +480,7 @@ export default function Contact() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
               </span>
-              Delivered on WhatsApp
+              Saved enquiry + WhatsApp
             </div>
           </motion.div>
 
@@ -472,6 +525,23 @@ export default function Contact() {
               </label>
 
               <label className={`${labelClass} sm:col-span-2`}>
+                Email Address <span className="font-normal text-[#7b8290]">(optional)</span>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={(e) => update("email", e.target.value)}
+                  className={inputClass}
+                  placeholder="you@example.com"
+                  maxLength={254}
+                  aria-invalid={Boolean(errors.email)}
+                />
+                {errors.email && (
+                  <span className={errorClass}>{errors.email}</span>
+                )}
+              </label>
+
+              <label className={`${labelClass} sm:col-span-2`}>
                 I&apos;m Interested In
                 <div className="relative">
                   <select
@@ -494,6 +564,18 @@ export default function Contact() {
               </label>
 
               <label className={`${labelClass} sm:col-span-2`}>
+                Vehicle Details <span className="font-normal text-[#7b8290]">(optional)</span>
+                <input
+                  type="text"
+                  value={form.vehicleDetails}
+                  onChange={(e) => update("vehicleDetails", e.target.value)}
+                  className={inputClass}
+                  placeholder="Vehicle make, model or listing"
+                  maxLength={240}
+                />
+              </label>
+
+              <label className={`${labelClass} sm:col-span-2`}>
                 Message <span className="text-[#b98f3f]">*</span>
                 <textarea
                   value={form.message}
@@ -509,17 +591,23 @@ export default function Contact() {
             </div>
 
             <div className="mt-6">
+              {submitError && (
+                <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                  {submitError}
+                </p>
+              )}
               <motion.button
                 type="submit"
+                disabled={submitting}
                 whileTap={{ scale: 0.98 }}
-                className="group relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-[#0f1c30] px-7 text-sm font-semibold text-white shadow-[0_12px_28px_-14px_rgba(15,28,48,0.7)] transition-colors hover:bg-[#1a2d4a] sm:w-auto"
+                className="group relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-[#0f1c30] px-7 text-sm font-semibold text-white shadow-[0_12px_28px_-14px_rgba(15,28,48,0.7)] transition-colors hover:bg-[#1a2d4a] disabled:cursor-wait disabled:opacity-70 sm:w-auto"
               >
                 <span
                   aria-hidden="true"
                   className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-full skew-x-[-18deg] bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 group-hover:translate-x-[320%]"
                 />
                 <Send size={16} aria-hidden="true" />
-                Send on WhatsApp
+                {submitting ? "Saving enquiry…" : "Save and continue to WhatsApp"}
               </motion.button>
 
               <AnimatePresence>
@@ -540,8 +628,9 @@ export default function Contact() {
                         aria-hidden="true"
                       />
                       <p className="leading-6">
-                        WhatsApp opened with your enquiry. Just press send
-                        there and our team will reply shortly.{" "}
+                        Your enquiry is saved. Use the link below to open
+                        WhatsApp with a prefilled message, then press Send to
+                        notify our team.{" "}
                         <a
                           href={lastLink}
                           target="_blank"

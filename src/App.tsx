@@ -33,9 +33,6 @@ import AddVehicle from "./pages/AddVehicle";
 import AllVehicles from "./pages/AllVehicles";
 import AdminCategories from "./pages/Categories";
 import AdminEnquiries from "./pages/Enquiries";
-import AdminCustomers from "./pages/Customers";
-import AdminSales from "./pages/Sales";
-import AdminReports from "./pages/Reports";
 import AdminSettings from "./pages/Settings";
 import VehicleDetails from "./pages/VehicleDetails";
 
@@ -762,27 +759,6 @@ function App() {
           <Route
             path="enquiries"
             element={<AdminEnquiries />}
-          />
-
-          {/* Customers */}
-
-          <Route
-            path="customers"
-            element={<AdminCustomers />}
-          />
-
-          {/* Sales */}
-
-          <Route
-            path="sales"
-            element={<AdminSales />}
-          />
-
-          {/* Reports */}
-
-          <Route
-            path="reports"
-            element={<AdminReports />}
           />
 
           {/* Settings */}
